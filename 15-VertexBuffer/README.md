@@ -17,8 +17,10 @@ There will be times that you need the Vertex and Indice information in the shade
 
 ## Structured Buffer
 If you have been following along then you may already have some ideas about how to do this.  Should be easy right?
-1.  Add the root signature for each shader that needs access
-2.  Pass the address of the buffer to the GPU for each shader that needs access
-3.  Create the structured buffer in the shader file
+1.  Create the SRV in the hit root signature for the structured buffer.
+2.  Add the root signature for each shader that needs access
+3.  Pass the address of the buffer to the GPU for each shader that needs access
+4.  Create the structured buffer in the shader file
+5.  Make sure the structured buffer and vertex buffers match
 
 ## 15.1 Root Signatures
