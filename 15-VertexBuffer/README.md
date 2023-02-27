@@ -19,8 +19,19 @@ There will be times that you need the Vertex and Indice information in the shade
 If you have been following along then you may already have some ideas about how to do this.  Should be easy right?
 1.  Create the SRV in the hit root signature for the structured buffer.
 2.  Add the root signature for each shader that needs access
-3.  Pass the address of the buffer to the GPU for each shader that needs access
+3.  Pass the address of the buffer to the GPU for each shader that needs access in the shader table
 4.  Create the structured buffer in the shader file
 5.  Make sure the structured buffer and vertex buffers match
 
 ## 15.1 Root Signatures
+An SRV is used for the structured buffer in createHitRootDesc().  We don't have to alter the createRtPipelineState() because the rootsignature is already associated.
+```c++
+// 15.1.a Vertices
+desc.range[0].BaseShaderRegister = 1; // gOutput used the first t() register in the shader
+desc.range[0].NumDescriptors = 1;
+desc.range[0].RegisterSpace = 0;
+desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+desc.range[0].OffsetInDescriptorsFromTableStart = 1; // gOutput used spot 0
+```
+
+## 15.2 
