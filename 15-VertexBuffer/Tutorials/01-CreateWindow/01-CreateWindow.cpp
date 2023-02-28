@@ -257,14 +257,22 @@ static const D3D12_HEAP_PROPERTIES kUploadHeapProps =
     0,
 };
 
+// 15.5.a
+struct TriVertex
+{
+    vec3 vertex;
+    vec4 color;
+};
+
 // 3.3 createTriangleVB
 ID3D12ResourcePtr createTriangleVB(ID3D12Device5Ptr pDevice)
 {
-    const vec3 vertices[] =
+    // 15.5.b
+    const TriVertex vertices[] =
     {
-        vec3(0,          1,  0),
-        vec3(0.866f,  -0.5f, 0),
-        vec3(-0.866f, -0.5f, 0),
+        vec3(0,          1,  0), vec4(1, 0, 0, 1),
+        vec3(0.866f,  -0.5f, 0), vec4(0, 1, 0, 1),
+        vec3(-0.866f, -0.5f, 0), vec4(0, 0, 1, 1),
     };
 
     // For simplicity, we create the vertex buffer on the upload heap, but that's not required
@@ -297,7 +305,7 @@ Tutorial01::AccelerationStructureBuffers createBottomLevelAS(ID3D12Device5Ptr pD
     {
         geomDesc[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
         geomDesc[i].Triangles.VertexBuffer.StartAddress = pVB[i]->GetGPUVirtualAddress();
-        geomDesc[i].Triangles.VertexBuffer.StrideInBytes = sizeof(vec3);
+        geomDesc[i].Triangles.VertexBuffer.StrideInBytes = sizeof(TriVertex); // 15.6
         geomDesc[i].Triangles.VertexCount = vertexCount[i];
         geomDesc[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
         geomDesc[i].Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
@@ -439,15 +447,16 @@ void buildTopLevelAS(ID3D12Device5Ptr pDevice, ID3D12GraphicsCommandList4Ptr pCm
 // 11.1.c
 ID3D12ResourcePtr createPlaneVB(ID3D12Device5Ptr pDevice)
 {
-    const vec3 vertices[] =
+    // 15.7
+    const TriVertex vertices[] =
     {
-        vec3(-100, -1,  -2),
-        vec3(100, -1,  100),
-        vec3(-100, -1,  100),
+        vec3(-100, -1,  -2), vec4(1, 0, 0, 1),
+        vec3(100, -1,  100), vec4(1, 0, 0, 1),
+        vec3(-100, -1,  100), vec4(1, 0, 0, 1),
 
-        vec3(-100, -1,  -2),
-        vec3(100, -1,  -2),
-        vec3(100, -1,  100),
+        vec3(-100, -1,  -2), vec4(1, 0, 0, 1),
+        vec3(100, -1,  -2), vec4(1, 0, 0, 1),
+        vec3(100, -1,  100), vec4(1, 0, 0, 1),
     };
 
     // For simplicity, we create the vertex buffer on the upload heap, but that's not required
@@ -763,16 +772,30 @@ struct GlobalRootSignature
     D3D12_STATE_SUBOBJECT subobject = {};
 };
 
-// 9.2.c create method for HitRootDesc
+// 15.2
 RootSignatureDesc createHitRootDesc()
 {
     RootSignatureDesc desc;
-    desc.rootParams.resize(1);
+
+    desc.rootParams.resize(2); // cbv + srv
+    // CBV
     desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     desc.rootParams[0].Descriptor.RegisterSpace = 0;
     desc.rootParams[0].Descriptor.ShaderRegister = 0;
 
-    desc.desc.NumParameters = 1;
+    // SRV
+    desc.range.resize(1); // srv
+    desc.range[0].BaseShaderRegister = 1; // gOutput used the first t() register in the shader
+    desc.range[0].NumDescriptors = 1;
+    desc.range[0].RegisterSpace = 0;
+    desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    desc.range[0].OffsetInDescriptorsFromTableStart = 2; // gOutput used spot 0 and gRtScene used spot 1
+    // SRV
+    desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
+    desc.rootParams[1].DescriptorTable.pDescriptorRanges = desc.range.data();
+
+    desc.desc.NumParameters = 2; // cbv + srv
     desc.desc.pParameters = desc.rootParams.data();
     desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
@@ -981,6 +1004,8 @@ void Tutorial01::createShaderTable()
     memcpy(pEntry3, pRtsoProps->GetShaderIdentifier(kHitGroup), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     assert(((uint64_t)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) % 8) == 0); // Root descriptor must be stored at an 8-byte aligned address
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[0]->GetGPUVirtualAddress();
+    // 15.3.a
+    *(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 4 - Triangle 0, shadow ray. ProgramID only
     uint8_t* pEntry4 = pData + mShaderTableEntrySize * 4;
@@ -1000,6 +1025,8 @@ void Tutorial01::createShaderTable()
     memcpy(pEntry7, pRtsoProps->GetShaderIdentifier(kHitGroup), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     assert(((uint64_t)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) % 8) == 0); // Root descriptor must be stored at an 8-byte aligned address
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[1]->GetGPUVirtualAddress();
+    // 15.3.b
+    *(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 8 - Triangle 1, shadow ray. ProgramID only
     uint8_t* pEntry8 = pData + mShaderTableEntrySize * 8;
@@ -1010,6 +1037,8 @@ void Tutorial01::createShaderTable()
     memcpy(pEntry9, pRtsoProps->GetShaderIdentifier(kHitGroup), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     assert(((uint64_t)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) % 8) == 0); // Root descriptor must be stored at an 8-byte aligned address
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[2]->GetGPUVirtualAddress();
+    // 15.3.c
+    *(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 10 - Triangle 2, shadow ray. ProgramID only
     uint8_t* pEntry10 = pData + mShaderTableEntrySize * 10;
@@ -1035,8 +1064,8 @@ void Tutorial01::createShaderResources()
     resDesc.SampleDesc.Count = 1;
     d3d_call(mpDevice->CreateCommittedResource(&kDefaultHeapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(&mpOutputResource))); // Starting as copy-source to simplify onFrameRender()
 
-    // Create an SRV/UAV descriptor heap. Need 2 entries - 1 SRV for the scene and 1 UAV for the output
-    mpSrvUavHeap = createDescriptorHeap(mpDevice, 2, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    // 15.1.a Create an SRV/UAV descriptor heap. Need 3 entries - 1 SRV for the scene and 1 UAV for the output and 1 for the vertex information
+    mpSrvUavHeap = createDescriptorHeap(mpDevice, 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     // Create the UAV. Based on the root signature we created it should be the first entry
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
@@ -1052,6 +1081,18 @@ void Tutorial01::createShaderResources()
     D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mpSrvUavHeap->GetCPUDescriptorHandleForHeapStart();
     srvHandle.ptr += mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     mpDevice->CreateShaderResourceView(nullptr, &srvDesc, srvHandle);
+
+    // 15.1.b
+    srvDesc = {};
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    srvDesc.Buffer.StructureByteStride = sizeof(TriVertex); // your vertex struct size goes here
+    srvDesc.Buffer.NumElements = 3; // number of vertices go here
+    srvHandle.ptr += mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    mpDevice->CreateShaderResourceView(mpVertexBuffer[0], &srvDesc, srvHandle);
+    mpVertexBuffer[0]->SetName(L"SRV VB");
 }
 
 //////////////////////////////////////////////////////////////////////////
