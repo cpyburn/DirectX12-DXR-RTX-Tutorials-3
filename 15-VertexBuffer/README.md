@@ -153,4 +153,5 @@ const TriVertex vertices[] =
     vec3(100, -1,  100), vec4(1, 0, 0, 1),
 };
 ```
+![image](https://user-images.githubusercontent.com/17934438/221937776-264c6de5-0577-4236-8d35-1e8c1833dcef.png)
 
