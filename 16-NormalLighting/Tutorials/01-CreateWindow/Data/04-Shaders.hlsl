@@ -149,7 +149,7 @@ void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     float Kd = CalculateDiffuseCoefficient(hitPosition, incidentLightRay, hitNormal);
     float4 diffuseColor = diffuseCoef * Kd * lightDiffuseColor;
 
-    payload.color = diffuseColor;
+    payload.color = diffuseColor; // hitColor + 
 }
 
 // 13.1.a
@@ -174,7 +174,7 @@ void planeChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
     RayDesc ray;
     ray.Origin = posW;
     // 13.5.c
-    ray.Direction = normalize(lightPosition);
+    ray.Direction = normalize(float3(0.5, 0.5, -0.5));
     // 13.5.d
     ray.TMin = 0.01;
     ray.TMax = 100000;
@@ -202,7 +202,7 @@ void planeChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
     float Kd = CalculateDiffuseCoefficient(hitPosition, incidentLightRay, hitNormal);
     float4 diffuseColor = diffuseCoef * Kd * lightDiffuseColor;
 
-    payload.color = diffuseColor;
+    payload.color = diffuseColor; // float4(0.7f, 0.7f, 0.7f, 1.0f) * factor + 
 }
 
 // 13.1.b

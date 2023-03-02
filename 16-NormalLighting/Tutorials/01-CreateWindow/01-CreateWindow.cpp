@@ -261,21 +261,21 @@ static const D3D12_HEAP_PROPERTIES kUploadHeapProps =
 struct TriVertex
 {
     vec3 vertex;
-    // 16
+    // 16.1.a
     vec3 normal;
 };
 
 // 3.3 createTriangleVB
 ID3D12ResourcePtr createTriangleVB(ID3D12Device5Ptr pDevice)
 {
-    // 15.5.b
+    // 16.1.c
     const TriVertex vertices[] =
     {
         vec3(0,          1,  0), vec3(0, 0, -1),
         vec3(0.866f,  -0.5f, 0), vec3(0, 0, -1),
         vec3(-0.866f, -0.5f, 0), vec3(0, 0, -1),
 
-        // 16 also increase vertex count passed to const uint32_t vertexCount[] = { 6, 6 }
+        // Note: 16 also increase vertex count passed to const uint32_t vertexCount[] = { 6, 6 }
         vec3(0,          1,  0), vec3(1, 0, 0),
         vec3(0,  -0.5f, 0.866f), vec3(1, 0, 0),
         vec3(0, -0.5f, -0.866f), vec3(1, 0, 0),
@@ -453,7 +453,7 @@ void buildTopLevelAS(ID3D12Device5Ptr pDevice, ID3D12GraphicsCommandList4Ptr pCm
 // 11.1.c
 ID3D12ResourcePtr createPlaneVB(ID3D12Device5Ptr pDevice)
 {
-    // 15.7
+    // 16.1.d
     const TriVertex vertices[] =
     {
         vec3(-100, -1,  -2), vec3(0, 1, 0),
@@ -483,7 +483,7 @@ void Tutorial01::createAccelerationStructures()
     mpVertexBuffer[1] = createPlaneVB(mpDevice);
     AccelerationStructureBuffers bottomLevelBuffers[2];
 
-    // 16
+    // 16.1.b
     // The first bottom-level buffer is for the plane and the triangle
     const uint32_t vertexCount[] = { 6, 6 }; // Triangle has 3 vertices, plane has 6
     bottomLevelBuffers[0] = createBottomLevelAS(mpDevice, mpCmdList, mpVertexBuffer, vertexCount, 2);
@@ -843,7 +843,7 @@ void Tutorial01::createConstantBuffer()
     }
 }
 
-// 13.2.h
+// 16.1.e
 RootSignatureDesc createPlaneHitRootDesc()
 {
     RootSignatureDesc desc;
@@ -1029,6 +1029,7 @@ void Tutorial01::createShaderTable()
     uint8_t* pEntry5 = pData + mShaderTableEntrySize * 5;
     memcpy(pEntry5, pRtsoProps->GetShaderIdentifier(kPlaneHitGroup), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     *(uint64_t*)(pEntry5 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV); // The SRV comes directly after the program id
+    // 16.1.f
     *(uint64_t*)(pEntry5 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(uint64_t)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 6 - Plane, shadow ray
