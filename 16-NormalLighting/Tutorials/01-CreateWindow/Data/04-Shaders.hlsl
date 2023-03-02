@@ -36,6 +36,7 @@ RWTexture2D<float4> gOutput : register(u0);
 struct STriVertex
 {
     float3 vertex;
+    // 16.2
     float3 normal;
 };
 StructuredBuffer<STriVertex> BTriVertex : register(t1);
@@ -97,18 +98,18 @@ void miss(inout RayPayload payload)
     payload.color = float3(0.4, 0.6, 0.2);
 }
 
-
+// 16.2
 static const float4 lightDiffuseColor = float4(0.2, 0.2, 0.2, 1.0);
 static const float diffuseCoef = 0.9;
 static const float3 lightPosition = float3(2.0, 2.0, -2.0);
 
-// Diffuse lighting calculation.
+// 16.2 Diffuse lighting calculation.
 float CalculateDiffuseCoefficient(in float3 hitPosition, in float3 incidentLightRay, in float3 normal)
 {
     float fNDotL = saturate(dot(-incidentLightRay, normal));
     return fNDotL;
 }
-
+// 16.2
 float3 HitAttribute(float3 vertexAttribute[3], BuiltInTriangleIntersectionAttributes attr)
 {
     return vertexAttribute[0] +
@@ -116,13 +117,13 @@ float3 HitAttribute(float3 vertexAttribute[3], BuiltInTriangleIntersectionAttrib
         attr.barycentrics.y * (vertexAttribute[2] - vertexAttribute[0]);
 }
 
-// Retrieve hit world position.
+// 16.2 Retrieve hit world position.
 float3 HitWorldPosition()
 {
     return WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
 }
 
-// 10.1.b
+// 16.3.a
 [shader("closesthit")]
 void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
 {
@@ -158,7 +159,7 @@ struct ShadowPayload
     bool hit;
 };
 
-// 12.1.a
+// 16.3.b
 [shader("closesthit")]
 void planeChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
 {
