@@ -64,7 +64,7 @@ const TriVertex vertices[] =
     vec3(100, -1,  100), vec3(0, 1, 0),
 };
 ```
-```
+
 Update the createPlaneHitRootDesc()
 ```c++
 // 16.1.e
