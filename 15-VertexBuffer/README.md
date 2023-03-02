@@ -64,7 +64,7 @@ RootSignatureDesc createHitRootDesc()
     desc.range[0].NumDescriptors = 1;
     desc.range[0].RegisterSpace = 0;
     desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    desc.range[0].OffsetInDescriptorsFromTableStart = 2; // gOutput used spot 0 and gRtScene used spot 1
+    desc.range[0].OffsetInDescriptorsFromTableStart = 0;
     // SRV
     desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
@@ -82,16 +82,16 @@ RootSignatureDesc createHitRootDesc()
 Bind the srv in the Shader Binding Table
 ```c++
 // 15.3.a
-*(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+*(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 ```
 ```c++
 // 15.3.b
-*(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+*(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 ```
 
 ```c++
 // 15.3.c
-*(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+*(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 ```
 
 ## 15.4 04-Shaders.hlsl
