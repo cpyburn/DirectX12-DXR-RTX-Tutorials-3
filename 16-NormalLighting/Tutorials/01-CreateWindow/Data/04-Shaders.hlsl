@@ -129,27 +129,27 @@ void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
     float3 hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
 
-    //// 15.4.b
-    //uint instance = InstanceID();
-    ////float3 hitColor = BTriVertex[instance].normal * barycentrics.x + BTriVertex[instance].normal * barycentrics.y + BTriVertex[instance].normal * barycentrics.z;
+    // 15.4.b
+    uint instance = InstanceID();
+    //float3 hitColor = BTriVertex[instance].normal * barycentrics.x + BTriVertex[instance].normal * barycentrics.y + BTriVertex[instance].normal * barycentrics.z;
 
-    //float3 hitPosition = HitWorldPosition();
-    //float3 incidentLightRay = normalize(hitPosition - lightPosition);
+    float3 hitPosition = HitWorldPosition();
+    float3 incidentLightRay = normalize(hitPosition - lightPosition);
 
-    //// Retrieve corresponding vertex normals for the triangle vertices.
-    //float3 vertexNormals[3] = {
-    //    BTriVertex[instance + 0].normal,
-    //    BTriVertex[instance + 1].normal,
-    //    BTriVertex[instance + 2].normal,
-    //};
+    // Retrieve corresponding vertex normals for the triangle vertices.
+    float3 vertexNormals[3] = {
+        BTriVertex[instance + 0].normal,
+        BTriVertex[instance + 1].normal,
+        BTriVertex[instance + 2].normal,
+    };
 
-    //float3 hitNormal = HitAttribute(vertexNormals, attribs);
+    float3 hitNormal = HitAttribute(vertexNormals, attribs);
 
-    //// Diffuse component.
-    //float Kd = CalculateDiffuseCoefficient(hitPosition, incidentLightRay, hitNormal);
-    //float4 diffuseColor = diffuseCoef * Kd * lightDiffuseColor;
+    // Diffuse component.
+    float Kd = CalculateDiffuseCoefficient(hitPosition, incidentLightRay, hitNormal);
+    float4 diffuseColor = diffuseCoef * Kd * lightDiffuseColor;
 
-    payload.color = hitColor;
+    payload.color = diffuseColor;
 }
 
 // 13.1.a
@@ -174,7 +174,7 @@ void planeChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
     RayDesc ray;
     ray.Origin = posW;
     // 13.5.c
-    ray.Direction = normalize(float3(0.5, 0.5, -0.5));
+    ray.Direction = normalize(lightPosition);
     // 13.5.d
     ray.TMin = 0.01;
     ray.TMax = 100000;
@@ -183,7 +183,26 @@ void planeChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes
     TraceRay(gRtScene, 0  /*rayFlags*/, 0xFF, 1 /* ray index*/, 0, 1, ray, shadowPayload);
     // 13.5.f
     float factor = shadowPayload.hit ? 0.1 : 1.0;
-    payload.color = float4(0.9f, 0.9f, 0.9f, 1.0f) * factor;
+    //payload.color = float4(0.9f, 0.9f, 0.9f, 1.0f) * factor;
+
+    float3 hitPosition = HitWorldPosition();
+    float3 incidentLightRay = normalize(hitPosition - lightPosition);
+
+    // Retrieve corresponding vertex normals for the triangle vertices.
+    uint vertId = PrimitiveIndex();
+    float3 vertexNormals[3] = {
+        BTriVertex[vertId + 0].normal,
+        BTriVertex[vertId + 1].normal,
+        BTriVertex[vertId + 2].normal,
+    };
+
+    float3 hitNormal = HitAttribute(vertexNormals, attribs);
+
+    // Diffuse component.
+    float Kd = CalculateDiffuseCoefficient(hitPosition, incidentLightRay, hitNormal);
+    float4 diffuseColor = diffuseCoef * Kd * lightDiffuseColor;
+
+    payload.color = diffuseColor;
 }
 
 // 13.1.b

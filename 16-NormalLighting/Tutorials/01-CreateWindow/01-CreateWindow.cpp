@@ -456,13 +456,13 @@ ID3D12ResourcePtr createPlaneVB(ID3D12Device5Ptr pDevice)
     // 15.7
     const TriVertex vertices[] =
     {
-        vec3(-100, -1,  -2), vec4(1, 0, 0, 1),
-        vec3(100, -1,  100), vec4(1, 0, 0, 1),
-        vec3(-100, -1,  100), vec4(1, 0, 0, 1),
+        vec3(-100, -1,  -2), vec3(0, 1, 0),
+        vec3(100, -1,  100), vec3(0, 1, 0),
+        vec3(-100, -1,  100), vec3(0, 1, 0),
 
-        vec3(-100, -1,  -2), vec4(1, 0, 0, 1),
-        vec3(100, -1,  -2), vec4(1, 0, 0, 1),
-        vec3(100, -1,  100), vec4(1, 0, 0, 1),
+        vec3(-100, -1,  -2), vec3(0, 1, 0),
+        vec3(100, -1,  -2), vec3(0, 1, 0),
+        vec3(100, -1,  100), vec3(0, 1, 0),
     };
 
     // For simplicity, we create the vertex buffer on the upload heap, but that's not required
@@ -796,7 +796,7 @@ RootSignatureDesc createHitRootDesc()
     desc.range[0].NumDescriptors = 1;
     desc.range[0].RegisterSpace = 0;
     desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    desc.range[0].OffsetInDescriptorsFromTableStart = 2; // gOutput used spot 0 and gRtScene used spot 1
+    desc.range[0].OffsetInDescriptorsFromTableStart = 0;
     // SRV
     desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
@@ -847,16 +847,23 @@ void Tutorial01::createConstantBuffer()
 RootSignatureDesc createPlaneHitRootDesc()
 {
     RootSignatureDesc desc;
-    desc.range.resize(1);
+    desc.range.resize(2);
     desc.range[0].BaseShaderRegister = 0;
     desc.range[0].NumDescriptors = 1;
     desc.range[0].RegisterSpace = 0;
     desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     desc.range[0].OffsetInDescriptorsFromTableStart = 0;
 
+    // srv
+    desc.range[1].BaseShaderRegister = 1;
+    desc.range[1].NumDescriptors = 1;
+    desc.range[1].RegisterSpace = 0;
+    desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    desc.range[1].OffsetInDescriptorsFromTableStart = 1;
+
     desc.rootParams.resize(1);
     desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
+    desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 2;
     desc.rootParams[0].DescriptorTable.pDescriptorRanges = desc.range.data();
 
     desc.desc.NumParameters = 1;
@@ -1012,7 +1019,7 @@ void Tutorial01::createShaderTable()
     assert(((uint64_t)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) % 8) == 0); // Root descriptor must be stored at an 8-byte aligned address
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[0]->GetGPUVirtualAddress();
     // 15.3.a
-    *(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+    *(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 4 - Triangle 0, shadow ray. ProgramID only
     uint8_t* pEntry4 = pData + mShaderTableEntrySize * 4;
@@ -1022,6 +1029,7 @@ void Tutorial01::createShaderTable()
     uint8_t* pEntry5 = pData + mShaderTableEntrySize * 5;
     memcpy(pEntry5, pRtsoProps->GetShaderIdentifier(kPlaneHitGroup), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
     *(uint64_t*)(pEntry5 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV); // The SRV comes directly after the program id
+    *(uint64_t*)(pEntry5 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(uint64_t)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 6 - Plane, shadow ray
     uint8_t* pEntry6 = pData + mShaderTableEntrySize * 6;
@@ -1033,7 +1041,7 @@ void Tutorial01::createShaderTable()
     assert(((uint64_t)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) % 8) == 0); // Root descriptor must be stored at an 8-byte aligned address
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[1]->GetGPUVirtualAddress();
     // 15.3.b
-    *(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+    *(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 8 - Triangle 1, shadow ray. ProgramID only
     uint8_t* pEntry8 = pData + mShaderTableEntrySize * 8;
@@ -1045,7 +1053,7 @@ void Tutorial01::createShaderTable()
     assert(((uint64_t)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) % 8) == 0); // Root descriptor must be stored at an 8-byte aligned address
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[2]->GetGPUVirtualAddress();
     // 15.3.c
-    *(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+    *(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
 
     // Entry 10 - Triangle 2, shadow ray. ProgramID only
     uint8_t* pEntry10 = pData + mShaderTableEntrySize * 10;
@@ -1123,7 +1131,7 @@ void Tutorial01::onFrameRender()
 
     // Refit the top-level acceleration structure
     buildTopLevelAS(mpDevice, mpCmdList, mpBottomLevelAS, mTlasSize, mRotation, true, mpTopLevelAS);
-    mRotation += 0.005f;
+    //mRotation += 0.005f;
 
     // 6.4 this is rasterization and no longer needed
     //const float clearColor[4] = { 0.4f, 0.6f, 0.2f, 1.0f };
