@@ -25,14 +25,18 @@ struct TriVertex
     // 16.1.a
     vec3 normal;
 };
+
 ```
 One thing to note is that normal lighting would be hard to see with just 3 flat triangles, so we add another triangle to the BLAS.
+
 ```c++
 // 16.1.b
 // The first bottom-level buffer is for the plane and the triangle
 const uint32_t vertexCount[] = { 6, 6 }; // Triangle has 3 vertices x 2, plane has 6
 ```
+
 Add normal data to the triangle and plane buffers
+
 ```c++
 // 16.1.c
 const TriVertex vertices[] =
@@ -93,6 +97,7 @@ RootSignatureDesc createPlaneHitRootDesc()
     return desc;
 }
 ```
+
 Update createShaderTable()
 ```c++
 // 16.1.f
