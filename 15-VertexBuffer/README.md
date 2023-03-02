@@ -115,12 +115,14 @@ payload.color = hitColor;
 
 ## 15.5 Vertex Struct
 Create a struct that matches the Structured buffer
+```c++
 // 15.5.a
 struct TriVertex
 {
     vec3 vertex;
     vec4 color;
 };
+```
 Update the createTriangleVB
 ```c++
 // 15.5.b
