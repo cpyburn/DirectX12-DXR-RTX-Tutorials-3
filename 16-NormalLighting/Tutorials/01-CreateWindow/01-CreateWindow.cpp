@@ -1131,7 +1131,7 @@ void Tutorial01::onFrameRender()
 
     // Refit the top-level acceleration structure
     buildTopLevelAS(mpDevice, mpCmdList, mpBottomLevelAS, mTlasSize, mRotation, true, mpTopLevelAS);
-    //mRotation += 0.005f;
+    mRotation += 0.005f;
 
     // 6.4 this is rasterization and no longer needed
     //const float clearColor[4] = { 0.4f, 0.6f, 0.2f, 1.0f };
