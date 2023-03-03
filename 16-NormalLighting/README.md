@@ -27,7 +27,7 @@ struct TriVertex
 };
 
 ```
-One thing to note is that normal lighting would be hard to see with just 3 flat triangles, so we add another triangle to the BLAS.
+One thing to note is that normal lighting would be hard to see with just 3 flat triangles (a single normal per vertex).  Even though a cube would look much better, to keep things simple, we will just add another triangle. Sooo, we add another triangle to the BLAS.
 
 ```c++
 // 16.1.b
