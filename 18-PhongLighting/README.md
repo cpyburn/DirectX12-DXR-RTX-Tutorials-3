@@ -1,5 +1,3 @@
-TODO change everything from 17 to 18
-
 DirectX Raytracing Tutorials
 ============
 This repository contain tutorials demonstrating how to use DirectX Raytracing.
@@ -10,17 +8,17 @@ Requirements:
 - [Windows 10 SDK version 1809 (10.0.17763.0)](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive)
 - Visual Studio 2022
 
-# DXR Tutorial 17
+# DXR Tutorial 18
 
-## 17 Phong Lighting
+## 18 Phong Lighting
 ![image](https://user-images.githubusercontent.com/17934438/222796299-56c50142-0f30-468a-8226-4bf19cef8e52.png)
 
 ## Overview
 
-## 17.0
+## 18.0
 Add structs for creating a sphere
 ```c++
-// 17.0.a
+// 18.0.a
 struct VertexPositionNormalTangentTexture
 {
     glm::vec3 position;
@@ -41,7 +39,7 @@ struct VertexPositionNormalTangentTexture
 };
 ```
 ```c++
-// 17.0.b
+// 18.0.b
 struct Shape
 {
     std::vector<VertexPositionNormalTangentTexture> vertexData;
@@ -50,12 +48,12 @@ struct Shape
 ```
 Add method for creating the sphere
 ```c++
-// 17.0.c
+// 18.0.c
 static Shape createSphere(float diameter, int tessellation, bool uvHorizontalFlip = false, bool uvVerticalFlip = false);
 ```
 Add code for creating the sphere
 ```c++
-// 17.0.d
+// 18.0.d
 Tutorial01::Shape Tutorial01::createSphere(float diameter, int tessellation, bool uvHorizontalFlip, bool uvVerticalFlip)
 {
     Shape returnSphereInfo;
@@ -198,11 +196,11 @@ Tutorial01::Shape Tutorial01::createSphere(float diameter, int tessellation, boo
 ```
 Add method for calculating tangent space
 ```c++
-// 17.0.e
+// 18.0.e
 static void calculateTangentSpace(Shape& shape);
 ```
 ```c++
-// 17.0.f
+// 18.0.f
 void Tutorial01::calculateTangentSpace(Shape& shape)
 {
     const int vertexCount = shape.vertexData.size();
