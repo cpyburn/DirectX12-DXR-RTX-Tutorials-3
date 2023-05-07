@@ -32,12 +32,13 @@
 RaytracingAccelerationStructure gRtScene : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
-// 15.4.a
+// 18.1
 struct STriVertex
 {
     float3 vertex;
-    // 16.2
     float3 normal;
+    float3 tangent;
+    float2 texCoord;
 };
 StructuredBuffer<STriVertex> BTriVertex : register(t1);
 // 17.4.a

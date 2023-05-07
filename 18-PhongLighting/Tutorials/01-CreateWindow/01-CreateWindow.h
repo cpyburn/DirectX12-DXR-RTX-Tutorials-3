@@ -112,6 +112,7 @@ private:
     ID3D12ResourcePtr mpIndexBuffer;
 
     // 18.0.a
+public:
     struct VertexPositionNormalTangentTexture
     {
         glm::vec3 position;

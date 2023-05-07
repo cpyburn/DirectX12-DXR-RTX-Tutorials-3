@@ -258,27 +258,27 @@ static const D3D12_HEAP_PROPERTIES kUploadHeapProps =
 };
 
 // 15.5.a
-struct TriVertex
-{
-    vec3 vertex;
-    // 16.1.a
-    vec3 normal;
-};
+//struct TriVertex
+//{
+//    vec3 vertex;
+//    // 16.1.a
+//    vec3 normal;
+//};
 
 // 3.3 createTriangleVB
 ID3D12ResourcePtr createTriangleVB(ID3D12Device5Ptr pDevice)
 {
-    // 16.1.c
-    const TriVertex vertices[] =
+    // 18.1
+    const Tutorial01::VertexPositionNormalTangentTexture vertices[] =
     {
-        vec3(0,          1,  0), vec3(0, 0, -1),
-        vec3(0.866f,  -0.5f, 0), vec3(0, 0, -1),
-        vec3(-0.866f, -0.5f, 0), vec3(0, 0, -1),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(0,          1,  0), vec3(0, 0, -1), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(0.866f,  -0.5f, 0), vec3(0, 0, -1), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(-0.866f, -0.5f, 0), vec3(0, 0, -1), vec3(), vec2()),
 
         // Note: 16 also increase vertex count passed to const uint32_t vertexCount[] = { 6, 6 }
-        vec3(0,          1,  0), vec3(1, 0, 0),
-        vec3(0,  -0.5f, 0.866f), vec3(1, 0, 0),
-        vec3(0, -0.5f, -0.866f), vec3(1, 0, 0),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(0,          1,  0), vec3(1, 0, 0), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(0,  -0.5f, 0.866f), vec3(1, 0, 0), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(0, -0.5f, -0.866f), vec3(1, 0, 0), vec3(), vec2()),
     };
 
     // For simplicity, we create the vertex buffer on the upload heap, but that's not required
@@ -311,7 +311,8 @@ Tutorial01::AccelerationStructureBuffers createBottomLevelAS(ID3D12Device5Ptr pD
     {
         geomDesc[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
         geomDesc[i].Triangles.VertexBuffer.StartAddress = pVB[i]->GetGPUVirtualAddress();
-        geomDesc[i].Triangles.VertexBuffer.StrideInBytes = sizeof(TriVertex); // 15.6
+        // 18.0
+        geomDesc[i].Triangles.VertexBuffer.StrideInBytes = sizeof(Tutorial01::VertexPositionNormalTangentTexture);
         geomDesc[i].Triangles.VertexCount = vertexCount[i];
         geomDesc[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
         geomDesc[i].Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
@@ -453,16 +454,16 @@ void buildTopLevelAS(ID3D12Device5Ptr pDevice, ID3D12GraphicsCommandList4Ptr pCm
 // 11.1.c
 ID3D12ResourcePtr createPlaneVB(ID3D12Device5Ptr pDevice)
 {
-    // 16.1.d
-    const TriVertex vertices[] =
+    // 18.1.b
+    const Tutorial01::VertexPositionNormalTangentTexture vertices[] =
     {
-        vec3(-100, -1,  -2), vec3(0, 1, 0),
-        vec3(100, -1,  100), vec3(0, 1, 0),
-        vec3(-100, -1,  100), vec3(0, 1, 0),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(-100, -1,  -2), vec3(0, 1, 0), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(100, -1,  100), vec3(0, 1, 0), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(-100, -1,  100), vec3(0, 1, 0), vec3(), vec2()),
 
-        vec3(-100, -1,  -2), vec3(0, 1, 0),
-        vec3(100, -1,  -2), vec3(0, 1, 0),
-        vec3(100, -1,  100), vec3(0, 1, 0),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(-100, -1,  -2), vec3(0, 1, 0), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(100, -1,  -2), vec3(0, 1, 0), vec3(), vec2()),
+        Tutorial01::VertexPositionNormalTangentTexture(vec3(100, -1,  100), vec3(0, 1, 0), vec3(), vec2()),
     };
 
     // For simplicity, we create the vertex buffer on the upload heap, but that's not required
@@ -479,6 +480,23 @@ void Tutorial01::createAccelerationStructures()
 {
     // 11.1.d
     mpVertexBuffer[0] = createTriangleVB(mpDevice);
+    
+    // 18.1.a
+    //Shape shape = createSphere(2.0f, 32);
+    //const uint32_t sVertexCount = shape.vertexData.size();
+    //UINT size = static_cast<unsigned int>(sizeof(VertexPositionNormalTangentTexture) * sVertexCount);
+    //// For simplicity, we create the vertex buffer on the upload heap, but that's not required
+    //mpVertexBuffer[0] = createBuffer(
+    //    mpDevice, 
+    //    size,
+    //    D3D12_RESOURCE_FLAG_NONE, 
+    //    D3D12_RESOURCE_STATE_GENERIC_READ, 
+    //    kUploadHeapProps);
+    //uint8_t* pData;
+    //mpVertexBuffer[0]->Map(0, nullptr, (void**)&pData);
+    //memcpy(pData, shape.vertexData.data(), size);
+    //mpVertexBuffer[0]->Unmap(0, nullptr);
+
     // 11.2.d
     mpVertexBuffer[1] = createPlaneVB(mpDevice);
     AccelerationStructureBuffers bottomLevelBuffers[2];
@@ -1334,7 +1352,8 @@ void Tutorial01::createShaderResources()
     srvDesc.Format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-    srvDesc.Buffer.StructureByteStride = sizeof(TriVertex); // your vertex struct size goes here
+    // 18.0
+    srvDesc.Buffer.StructureByteStride = sizeof(Tutorial01::VertexPositionNormalTangentTexture); // your vertex struct size goes here
     srvDesc.Buffer.NumElements = 3; // number of vertices go here
     srvHandle.ptr += mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     mpDevice->CreateShaderResourceView(mpVertexBuffer[0], &srvDesc, srvHandle);
