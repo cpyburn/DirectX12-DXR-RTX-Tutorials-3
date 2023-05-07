@@ -12,10 +12,10 @@ Requirements:
 
 # DXR Tutorial 17
 
-## 1.0 Vertex Buffer
+## 1.0 Index Buffer
 
 ## Overview
-There will be times that you need the Vertex and Indice information in the shaders for DXR and RTX for things like vertex positions, texture uvs, normals, binormals, tangents, and even colors.  We do this with a shader Structured Buffer.
+There will be times that you need Indice information from a model
 
 ## Structured Buffer
 If you have been following along then you may already have some ideas about how to do this.  Should be easy right?
@@ -28,12 +28,12 @@ If you have been following along then you may already have some ideas about how 
 ## 17.1 createShaderResources()
 Increase the size of the buffer
 ```c++
-// 17.1.a Create an SRV/UAV descriptor heap. Need 3 entries - 1 SRV for the scene and 1 UAV for the output and 1 for the vertex information
-mpSrvUavHeap = createDescriptorHeap(mpDevice, 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+// 17.1.a Create an SRV/UAV descriptor heap. Need 4 entries - 1 SRV for the scene and 1 UAV for the output, 1 for the vertex information, and now one for the Index buffer
+mpSrvUavHeap = createDescriptorHeap(mpDevice, 4, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 ```
 Create the SRV
 ```c++
-// 17.1.a
+// 17.1.b
 srvDesc = {};
 srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_BUFFER;
 srvDesc.Format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
