@@ -108,7 +108,10 @@ private:
     // 14.2.b
     float mRotation = 0;
 
-    // 17.0.a
+    // 17.1.c
+    ID3D12ResourcePtr mpIndexBuffer;
+
+    // 18.0.a
     struct VertexPositionNormalTangentTexture
     {
         glm::vec3 position;
@@ -128,16 +131,16 @@ private:
         VertexPositionNormalTangentTexture() = default;
     };
 
-    // 17.0.b
+    // 18.0.b
     struct Shape
     {
         std::vector<VertexPositionNormalTangentTexture> vertexData;
         std::vector<unsigned short> indexData;
     };
 
-    // 17.0.e
+    // 18.0.e
     static void calculateTangentSpace(Shape& shape);
     
-    // 17.0.c
+    // 18.0.c
     static Shape createSphere(float diameter, int tessellation, bool uvHorizontalFlip = false, bool uvVerticalFlip = false);
 };
