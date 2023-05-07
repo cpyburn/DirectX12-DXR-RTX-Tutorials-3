@@ -140,5 +140,5 @@ float3 vertexNormals[3] = {
 };
 ```
 
-![image]()
+![image](https://user-images.githubusercontent.com/17934438/222509414-c22fc5bd-a7cc-48d5-adc1-ec018cdda216.png)
 
