@@ -779,30 +779,42 @@ struct GlobalRootSignature
     D3D12_STATE_SUBOBJECT subobject = {};
 };
 
-// 15.2
+// 17.2
 RootSignatureDesc createHitRootDesc()
 {
     RootSignatureDesc desc;
 
-    desc.rootParams.resize(2); // cbv + srv
+    desc.rootParams.resize(3); // cbv + vertex srv + index srv
     // CBV
     desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     desc.rootParams[0].Descriptor.RegisterSpace = 0;
     desc.rootParams[0].Descriptor.ShaderRegister = 0;
 
-    // SRV
-    desc.range.resize(1); // srv
+    desc.range.resize(2); // vertex srv + index srv
+
+    // vertex SRV
     desc.range[0].BaseShaderRegister = 1; // gOutput used the first t() register in the shader
     desc.range[0].NumDescriptors = 1;
     desc.range[0].RegisterSpace = 0;
     desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     desc.range[0].OffsetInDescriptorsFromTableStart = 0;
-    // SRV
+    // vertex SRV
     desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-    desc.rootParams[1].DescriptorTable.pDescriptorRanges = desc.range.data();
+    desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[0];
 
-    desc.desc.NumParameters = 2; // cbv + srv
+    // index SRV
+    desc.range[1].BaseShaderRegister = 2; // gOutput used the first t() and vertex srv used t1 register in the shader
+    desc.range[1].NumDescriptors = 1;
+    desc.range[1].RegisterSpace = 0;
+    desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    desc.range[1].OffsetInDescriptorsFromTableStart = 0;
+    // index SRV
+    desc.rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    desc.rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
+    desc.rootParams[2].DescriptorTable.pDescriptorRanges = &desc.range[1];
+
+    desc.desc.NumParameters = 3; // cbv + vertex srv + index srv
     desc.desc.pParameters = desc.rootParams.data();
     desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
@@ -1020,6 +1032,8 @@ void Tutorial01::createShaderTable()
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[0]->GetGPUVirtualAddress();
     // 15.3.a
     *(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+    // 17.3.a
+    *(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 3; //  index SRV comes 3 after the program id
 
     // Entry 4 - Triangle 0, shadow ray. ProgramID only
     uint8_t* pEntry4 = pData + mShaderTableEntrySize * 4;
@@ -1043,6 +1057,8 @@ void Tutorial01::createShaderTable()
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[1]->GetGPUVirtualAddress();
     // 15.3.b
     *(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+    // 17.3.b
+    *(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 3; // The index SRV comes 3 after the program id
 
     // Entry 8 - Triangle 1, shadow ray. ProgramID only
     uint8_t* pEntry8 = pData + mShaderTableEntrySize * 8;
@@ -1055,6 +1071,8 @@ void Tutorial01::createShaderTable()
     *(D3D12_GPU_VIRTUAL_ADDRESS*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES) = mpConstantBuffer[2]->GetGPUVirtualAddress();
     // 15.3.c
     *(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
+    // 17.3.c
+    *(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 3; // The index SRV comes 3 after the program id
 
     // Entry 10 - Triangle 2, shadow ray. ProgramID only
     uint8_t* pEntry10 = pData + mShaderTableEntrySize * 10;
@@ -1080,8 +1098,8 @@ void Tutorial01::createShaderResources()
     resDesc.SampleDesc.Count = 1;
     d3d_call(mpDevice->CreateCommittedResource(&kDefaultHeapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_COPY_SOURCE, nullptr, IID_PPV_ARGS(&mpOutputResource))); // Starting as copy-source to simplify onFrameRender()
 
-    // 15.1.a Create an SRV/UAV descriptor heap. Need 3 entries - 1 SRV for the scene and 1 UAV for the output and 1 for the vertex information
-    mpSrvUavHeap = createDescriptorHeap(mpDevice, 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+    // 17.1.a Create an SRV/UAV descriptor heap. Need 4 entries - 1 SRV for the scene and 1 UAV for the output, 1 for the vertex information, and now one for the Index buffer
+    mpSrvUavHeap = createDescriptorHeap(mpDevice, 4, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 
     // Create the UAV. Based on the root signature we created it should be the first entry
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
@@ -1109,6 +1127,30 @@ void Tutorial01::createShaderResources()
     srvHandle.ptr += mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     mpDevice->CreateShaderResourceView(mpVertexBuffer[0], &srvDesc, srvHandle);
     mpVertexBuffer[0]->SetName(L"SRV VB");
+
+    // 17.1.b mpVertexBuffer[0] is triangle, mpVertexBuffer[1] is plane, for this excercise we are only doing indices for the triangle
+    const int indices[] =
+    {
+        0, 1, 2
+    };
+
+    // For simplicity, we create the vertex buffer on the upload heap, but that's not required
+    mpIndexBuffer = createBuffer(mpDevice, sizeof(indices), D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, kUploadHeapProps);
+    uint8_t* pData;
+    mpIndexBuffer->Map(0, nullptr, (void**)&pData);
+    memcpy(pData, indices, sizeof(indices));
+    mpIndexBuffer->Unmap(0, nullptr);
+
+    srvDesc = {};
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_BUFFER;
+    srvDesc.Format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    srvDesc.Buffer.StructureByteStride = sizeof(int); // your index struct size goes here
+    srvDesc.Buffer.NumElements = 3; // number of indices go here
+    srvHandle.ptr += mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    mpDevice->CreateShaderResourceView(mpIndexBuffer, &srvDesc, srvHandle);
+    mpIndexBuffer->SetName(L"SRV IB");
 }
 
 //////////////////////////////////////////////////////////////////////////

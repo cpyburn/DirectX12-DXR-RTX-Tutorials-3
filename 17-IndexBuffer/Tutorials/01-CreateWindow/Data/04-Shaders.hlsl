@@ -40,6 +40,8 @@ struct STriVertex
     float3 normal;
 };
 StructuredBuffer<STriVertex> BTriVertex : register(t1);
+// 17.4.a
+StructuredBuffer<uint> indices: register(t2);
 
 // 10.1.a
 cbuffer PerFrame : register(b0)
@@ -137,11 +139,12 @@ void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
     float3 hitPosition = HitWorldPosition();
     float3 incidentLightRay = normalize(hitPosition - lightPosition);
 
+    // 17.4.b
     // Retrieve corresponding vertex normals for the triangle vertices.
     float3 vertexNormals[3] = {
-        BTriVertex[instance + 0].normal,
-        BTriVertex[instance + 1].normal,
-        BTriVertex[instance + 2].normal,
+        BTriVertex[instance + indices[0]].normal,
+        BTriVertex[instance + indices[1]].normal,
+        BTriVertex[instance + indices[2]].normal,
     };
 
     float3 hitNormal = HitAttribute(vertexNormals, attribs);

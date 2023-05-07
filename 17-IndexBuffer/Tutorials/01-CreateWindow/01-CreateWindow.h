@@ -84,6 +84,9 @@ private:
     ID3D12ResourcePtr mpBottomLevelAS[2];
     uint64_t mTlasSize = 0;
 
+    // 17.1.c
+    ID3D12ResourcePtr mpIndexBuffer;
+
     // Tutorial 04
     void createRtPipelineState();
     ID3D12StateObjectPtr mpPipelineState;
