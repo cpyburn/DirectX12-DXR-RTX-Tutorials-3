@@ -1,5 +1,3 @@
-TODO update doc to use indices instead of vertex
-
 DirectX Raytracing Tutorials
 ============
 This repository contain tutorials demonstrating how to use DirectX Raytracing.
@@ -12,7 +10,7 @@ Requirements:
 
 # DXR Tutorial 17
 
-## 1.0 Index Buffer
+## 7.0 Index Buffer
 
 ## Overview
 There will be times that you need Indice information from a model
