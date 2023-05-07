@@ -1,3 +1,5 @@
+TODO change everything from 17 to 18
+
 DirectX Raytracing Tutorials
 ============
 This repository contain tutorials demonstrating how to use DirectX Raytracing.
@@ -8,216 +10,266 @@ Requirements:
 - [Windows 10 SDK version 1809 (10.0.17763.0)](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive)
 - Visual Studio 2022
 
-# DXR Tutorial 16
+# DXR Tutorial 17
 
-## 16.0 Addding Normals and Diffuse Lighting
+## 17 Phong Lighting
+![image](https://user-images.githubusercontent.com/17934438/222796299-56c50142-0f30-468a-8226-4bf19cef8e52.png)
 
 ## Overview
-In the last tutorial we saw how to use the vertex data in the shaders.  There isn't anything new here that we haven't already done so I will move quickly through all the code changes.
 
-## 16.1
-Update the TriVertex structure
+## 17.0
+Add structs for creating a sphere
 ```c++
-// 15.5.a
-struct TriVertex
+// 17.0.a
+struct VertexPositionNormalTangentTexture
 {
-    vec3 vertex;
-    // 16.1.a
-    vec3 normal;
-};
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec3 tangent;
+    glm::vec2 texCoord;
 
-```
-One thing to note is that normal lighting would be hard to see with just 3 flat triangles, so we add another triangle to the BLAS.
+    VertexPositionNormalTangentTexture(const glm::vec3 pos, const glm::vec3 norm,
+        const glm::vec3 tan, const glm::vec2 texCor)
+    {
+        position = pos;
+        normal = norm;
+        tangent = tan;
+        texCoord = texCor;
+    }
 
-```c++
-// 16.1.b
-// The first bottom-level buffer is for the plane and the triangle
-const uint32_t vertexCount[] = { 6, 6 }; // Triangle has 3 vertices x 2, plane has 6
-```
-
-Add normal data to the triangle and plane buffers
-
-```c++
-// 16.1.c
-const TriVertex vertices[] =
-{
-    vec3(0,          1,  0), vec3(0, 0, -1),
-    vec3(0.866f,  -0.5f, 0), vec3(0, 0, -1),
-    vec3(-0.866f, -0.5f, 0), vec3(0, 0, -1),
-
-    // Note: 16 also increase vertex count passed to const uint32_t vertexCount[] = { 6, 6 }
-    vec3(0,          1,  0), vec3(1, 0, 0),
-    vec3(0,  -0.5f, 0.866f), vec3(1, 0, 0),
-    vec3(0, -0.5f, -0.866f), vec3(1, 0, 0),
+    VertexPositionNormalTangentTexture() = default;
 };
 ```
 ```c++
-// 16.1.d
-const TriVertex vertices[] =
+// 17.0.b
+struct Shape
 {
-    vec3(-100, -1,  -2), vec3(0, 1, 0),
-    vec3(100, -1,  100), vec3(0, 1, 0),
-    vec3(-100, -1,  100), vec3(0, 1, 0),
-
-    vec3(-100, -1,  -2), vec3(0, 1, 0),
-    vec3(100, -1,  -2), vec3(0, 1, 0),
-    vec3(100, -1,  100), vec3(0, 1, 0),
+    std::vector<VertexPositionNormalTangentTexture> vertexData;
+    std::vector<unsigned short> indexData;
 };
 ```
-
-Update the createPlaneHitRootDesc()
+Add method for creating the sphere
 ```c++
-// 16.1.e
-RootSignatureDesc createPlaneHitRootDesc()
+// 17.0.c
+static Shape createSphere(float diameter, int tessellation, bool uvHorizontalFlip = false, bool uvVerticalFlip = false);
+```
+Add code for creating the sphere
+```c++
+// 17.0.d
+Tutorial01::Shape Tutorial01::createSphere(float diameter, int tessellation, bool uvHorizontalFlip, bool uvVerticalFlip)
 {
-    RootSignatureDesc desc;
-    desc.range.resize(2);
-    desc.range[0].BaseShaderRegister = 0;
-    desc.range[0].NumDescriptors = 1;
-    desc.range[0].RegisterSpace = 0;
-    desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    desc.range[0].OffsetInDescriptorsFromTableStart = 0;
+    Shape returnSphereInfo;
 
-    // srv
-    desc.range[1].BaseShaderRegister = 1;
-    desc.range[1].NumDescriptors = 1;
-    desc.range[1].RegisterSpace = 0;
-    desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    desc.range[1].OffsetInDescriptorsFromTableStart = 1;
+    const int verticalSegments = tessellation;
+    const int horizontalSegments = tessellation * 2;
+    float uIncrement = 1.f / horizontalSegments;
+    float vIncrement = 1.f / verticalSegments;
+    const float radius = diameter / 2;
 
-    desc.rootParams.resize(1);
-    desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    desc.rootParams[0].DescriptorTable.NumDescriptorRanges = 2;
-    desc.rootParams[0].DescriptorTable.pDescriptorRanges = desc.range.data();
+    uIncrement *= uvHorizontalFlip ? 1 : -1;
+    vIncrement *= uvVerticalFlip ? 1 : -1;
 
-    desc.desc.NumParameters = 1;
-    desc.desc.pParameters = desc.rootParams.data();
-    desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+    float u = uvHorizontalFlip ? 0 : 1;
+    float v = uvVerticalFlip ? 0 : 1;
 
-    return desc;
+    // Start with a single vertex at the bottom of the sphere.
+    for (int i = 0; i < horizontalSegments; i++)
+    {
+        u += uIncrement;
+
+        VertexPositionNormalTangentTexture vertex(
+            glm::vec3(0, -1, 0) * radius,
+            glm::vec3(0, -1, 0),
+            glm::vec3(0),
+            glm::vec2(u, v)
+        );
+
+        //Add it
+        returnSphereInfo.vertexData.push_back(vertex);
+    }
+
+    // Create rings of vertices at progressively higher latitudes.
+    v = uvVerticalFlip ? 0 : 1;
+    for (int i = 0; i < verticalSegments - 1; i++)
+    {
+        const float latitude = (((i + 1) * static_cast<float>(M_PI)) / verticalSegments) - static_cast<float>(M_PI) / 2;
+        u = uvHorizontalFlip ? 0 : 1;
+        v += vIncrement;
+        const float dy = static_cast<float>(sin(latitude));
+        const float dxz = static_cast<float>(cos(latitude));
+
+        // Create a single ring of vertices at this latitude.
+        for (int j = 0; j <= horizontalSegments; j++)
+        {
+            const float longitude = j * static_cast<float>(M_PI) * 2 / horizontalSegments;
+
+            const float dx = static_cast<float>(cos(longitude)) * dxz;
+            const float dz = static_cast<float>(sin(longitude)) * dxz;
+
+            const glm::vec3 normal(dx, dy, dz);
+
+            const glm::vec2 texCoord(u, v);
+            u += uIncrement;
+
+            VertexPositionNormalTangentTexture vertex(
+                normal * radius,
+                normal,
+                glm::vec3(0),
+                texCoord
+            );
+
+            //Add it
+            returnSphereInfo.vertexData.push_back(vertex);
+        }
+    }
+
+    // Finish with a single vertex at the top of the sphere.
+    v = uvVerticalFlip ? 1 : 0;
+    u = uvHorizontalFlip ? 0 : 1;
+    for (int i = 0; i < horizontalSegments; i++)
+    {
+        u += uIncrement;
+
+        VertexPositionNormalTangentTexture vertex(
+            glm::vec3(0, 1, 0) * radius,
+            glm::vec3(0, 1, 0),
+            glm::vec3(0),
+            glm::vec2(u, v)
+        );
+
+        //Add it
+        returnSphereInfo.vertexData.push_back(vertex);
+    }
+
+    // Create a fan connecting the bottom vertex to the bottom latitude ring.
+    for (int i = 0; i < horizontalSegments; i++)
+    {
+        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i));
+
+        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(1 + i + horizontalSegments));
+
+        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i + horizontalSegments));
+    }
+
+    // Fill the sphere body with triangles joining each pair of latitude rings.
+    for (int i = 0; i < verticalSegments - 2; i++)
+    {
+        for (int j = 0; j < horizontalSegments; j++)
+        {
+            const int nextI = i + 1;
+            const int nextJ = j + 1;
+            const int num = horizontalSegments + 1;
+
+            const int i1 = horizontalSegments + (i * num) + j;
+            const int i2 = horizontalSegments + (i * num) + nextJ;
+            const int i3 = horizontalSegments + (nextI * num) + j;
+            const int i4 = i3 + 1;
+
+            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i1));
+
+            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i2));
+
+            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i3));
+
+            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i2));
+
+            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i4));
+
+            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i3));
+        }
+    }
+
+    // Create a fan connecting the top vertex to the top latitude ring.
+    for (int i = 0; i < horizontalSegments; i++)
+    {
+        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(returnSphereInfo.vertexData.size() - 1 - i));
+
+        returnSphereInfo.indexData.push_back(
+            static_cast<unsigned short>(returnSphereInfo.vertexData.size() - horizontalSegments - 2 - i));
+
+        returnSphereInfo.indexData.push_back(
+            static_cast<unsigned short>(returnSphereInfo.vertexData.size() - horizontalSegments - 1 - i));
+    }
+
+    calculateTangentSpace(returnSphereInfo);
+
+    return returnSphereInfo;
 }
 ```
-
-Update createShaderTable()
+Add method for calculating tangent space
 ```c++
-// 16.1.f
-*(uint64_t*)(pEntry5 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(uint64_t)) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2; // The SRV comes 2 after the program id
-```
-
-## 16.2 04-Shaders.hlsl
-* Update the STriVertex
-```c++
-// 16.2
-float3 normal;
-```
-* Add the methods that will help calculate diffuse lighting
-```c++
-// 16.2
-static const float4 lightDiffuseColor = float4(0.2, 0.2, 0.2, 1.0);
-static const float diffuseCoef = 0.9;
-static const float3 lightPosition = float3(2.0, 2.0, -2.0);
-
-// 16.2 Diffuse lighting calculation.
-float CalculateDiffuseCoefficient(in float3 hitPosition, in float3 incidentLightRay, in float3 normal)
-{
-    float fNDotL = saturate(dot(-incidentLightRay, normal));
-    return fNDotL;
-}
-// 16.2
-float3 HitAttribute(float3 vertexAttribute[3], BuiltInTriangleIntersectionAttributes attr)
-{
-    return vertexAttribute[0] +
-        attr.barycentrics.x * (vertexAttribute[1] - vertexAttribute[0]) +
-        attr.barycentrics.y * (vertexAttribute[2] - vertexAttribute[0]);
-}
-
-// 16.2 Retrieve hit world position.
-float3 HitWorldPosition()
-{
-    return WorldRayOrigin() + RayTCurrent() * WorldRayDirection();
-}
-```
-
-## 16.3 Update the Hit Shaders
-Add diffuse lighting to the hit shaders, chs and planechs
-```c++
-// 16.3.a
-[shader("closesthit")]
-void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
-{
-    float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
-    float3 hitColor = A * barycentrics.x + B * barycentrics.y + C * barycentrics.z;
-
-    // 15.4.b
-    uint instance = InstanceID();
-    //float3 hitColor = BTriVertex[instance].normal * barycentrics.x + BTriVertex[instance].normal * barycentrics.y + BTriVertex[instance].normal * barycentrics.z;
-
-    float3 hitPosition = HitWorldPosition();
-    float3 incidentLightRay = normalize(hitPosition - lightPosition);
-
-    // Retrieve corresponding vertex normals for the triangle vertices.
-    float3 vertexNormals[3] = {
-        BTriVertex[instance + 0].normal,
-        BTriVertex[instance + 1].normal,
-        BTriVertex[instance + 2].normal,
-    };
-
-    float3 hitNormal = HitAttribute(vertexNormals, attribs);
-
-    // Diffuse component.
-    float Kd = CalculateDiffuseCoefficient(hitPosition, incidentLightRay, hitNormal);
-    float4 diffuseColor = diffuseCoef * Kd * lightDiffuseColor;
-
-    payload.color = diffuseColor; // hitColor + 
-}
+// 17.0.e
+static void calculateTangentSpace(Shape& shape);
 ```
 ```c++
-// 16.3.b
-[shader("closesthit")]
-void planeChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
+// 17.0.f
+void Tutorial01::calculateTangentSpace(Shape& shape)
 {
-    // 13.5.a
-    float hitT = RayTCurrent();
-    float3 rayDirW = WorldRayDirection();
-    float3 rayOriginW = WorldRayOrigin();
+    const int vertexCount = shape.vertexData.size();
+    const int triangleCount = shape.indexData.size() / 3;
 
-    // 13.5.b Find the world-space hit position
-    float3 posW = rayOriginW + hitT * rayDirW;
+    glm::vec3* tan1 = new glm::vec3[vertexCount * 2];
+    glm::vec3* tan2 = tan1 + vertexCount;
 
-    // Fire a shadow ray. The direction is hard-coded here, but can be fetched from a constant-buffer
-    RayDesc ray;
-    ray.Origin = posW;
-    // 13.5.c
-    ray.Direction = normalize(float3(0.5, 0.5, -0.5));
-    // 13.5.d
-    ray.TMin = 0.01;
-    ray.TMax = 100000;
-    // 13.5.e
-    ShadowPayload shadowPayload;
-    TraceRay(gRtScene, 0  /*rayFlags*/, 0xFF, 1 /* ray index*/, 0, 1, ray, shadowPayload);
-    // 13.5.f
-    float factor = shadowPayload.hit ? 0.1 : 1.0;
-    //payload.color = float4(0.9f, 0.9f, 0.9f, 1.0f) * factor;
+    VertexPositionNormalTangentTexture a1, a2, a3;
+    glm::vec3 v1, v2, v3;
+    glm::vec2 w1, w2, w3;
 
-    float3 hitPosition = HitWorldPosition();
-    float3 incidentLightRay = normalize(hitPosition - lightPosition);
+    for (int a = 0; a < triangleCount; a++)
+    {
+        const unsigned short i1 = shape.indexData[(a * 3) + 0];
+        const unsigned short i2 = shape.indexData[(a * 3) + 1];
+        const unsigned short i3 = shape.indexData[(a * 3) + 2];
 
-    // Retrieve corresponding vertex normals for the triangle vertices.
-    uint vertId = PrimitiveIndex();
-    float3 vertexNormals[3] = {
-        BTriVertex[vertId + 0].normal,
-        BTriVertex[vertId + 1].normal,
-        BTriVertex[vertId + 2].normal,
-    };
+        a1 = shape.vertexData[i1];
+        a2 = shape.vertexData[i2];
+        a3 = shape.vertexData[i3];
 
-    float3 hitNormal = HitAttribute(vertexNormals, attribs);
+        v1 = a1.position;
+        v2 = a2.position;
+        v3 = a3.position;
 
-    // Diffuse component.
-    float Kd = CalculateDiffuseCoefficient(hitPosition, incidentLightRay, hitNormal);
-    float4 diffuseColor = diffuseCoef * Kd * lightDiffuseColor;
+        w1 = a1.texCoord;
+        w2 = a2.texCoord;
+        w3 = a3.texCoord;
 
-    payload.color = diffuseColor; // float4(0.7f, 0.7f, 0.7f, 1.0f) * factor + 
+        float x1 = v2.x - v1.x;
+        float x2 = v3.x - v1.x;
+        float y1 = v2.y - v1.y;
+        float y2 = v3.y - v1.y;
+        float z1 = v2.z - v1.z;
+        float z2 = v3.z - v1.z;
+
+        float s1 = w2.x - w1.x;
+        float s2 = w3.x - w1.x;
+        float t1 = w2.y - w1.y;
+        float t2 = w3.y - w1.y;
+
+        const float r = 1.0F / ((s1 * t2) - (s2 * t1));
+        glm::vec3 sdir(((t2 * x1) - (t1 * x2)) * r, ((t2 * y1) - (t1 * y2)) * r, ((t2 * z1) - (t1 * z2)) * r);
+        glm::vec3 tdir(((s1 * x2) - (s2 * x1)) * r, ((s1 * y2) - (s2 * y1)) * r, ((s1 * z2) - (s2 * z1)) * r);
+
+        tan1[i1] += sdir;
+        tan1[i2] += sdir;
+        tan1[i3] += sdir;
+
+        tan2[i1] += tdir;
+        tan2[i2] += tdir;
+        tan2[i3] += tdir;
+    }
+
+    for (int a = 0; a < vertexCount; a++)
+    {
+        VertexPositionNormalTangentTexture vertex = shape.vertexData[a];
+
+        const glm::vec3 n = vertex.normal;
+        const glm::vec3 t = tan1[a];
+
+        // Gram-Schmidt orthogonalize
+        vertex.tangent = t - (n * glm::dot(n, t));
+        vertex.tangent = glm::normalize(vertex.tangent);
+
+        shape.vertexData[a] = vertex;
+    }
 }
 ```
-
-![image](https://user-images.githubusercontent.com/17934438/222509414-c22fc5bd-a7cc-48d5-adc1-ec018cdda216.png)
