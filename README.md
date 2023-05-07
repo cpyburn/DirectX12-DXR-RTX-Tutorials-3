@@ -7,3 +7,6 @@ These will be more advanced and build on all the things we learned previously.
 
 ### [16-NormalLighting](https://github.com/cpyburn/DirectX12-DXR-RTX-Tutorials-3/tree/main/16-NormalLighting) - How to add normals and do diffuse lighting
 ![image](https://user-images.githubusercontent.com/17934438/222509414-c22fc5bd-a7cc-48d5-adc1-ec018cdda216.png)
+
+### [17-IndexBuffer](https://github.com/cpyburn/DirectX12-DXR-RTX-Tutorials-3/tree/main/17-IndexBuffer) - How to add indices to the ray tracing shader
+![image](https://user-images.githubusercontent.com/17934438/222509414-c22fc5bd-a7cc-48d5-adc1-ec018cdda216.png)

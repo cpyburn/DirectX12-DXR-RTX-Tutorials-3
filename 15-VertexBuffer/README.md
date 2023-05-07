@@ -31,7 +31,7 @@ mpSrvUavHeap = createDescriptorHeap(mpDevice, 3, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_
 ```
 Create the SRV
 ```c++
-// 15.1.a
+// 15.1.b
 srvDesc = {};
 srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_BUFFER;
 srvDesc.Format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;

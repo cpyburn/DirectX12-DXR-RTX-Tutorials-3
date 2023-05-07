@@ -10,264 +10,135 @@ Requirements:
 
 # DXR Tutorial 17
 
-## 17 Phong Lighting
-![image](https://user-images.githubusercontent.com/17934438/222796299-56c50142-0f30-468a-8226-4bf19cef8e52.png)
+## 7.0 Index Buffer
 
 ## Overview
+There will be times that you need Indice information from a model
 
-## 17.0
-Add structs for creating a sphere
+## Structured Buffer
+If you have been following along then you may already have some ideas about how to do this.  Should be easy right? We just did it for the vertex buffer
+1.  Create the SRV
+2.  Create the Root Signature
+3.  Bind the srv in the Shader Binding Table
+4.  Create the structured buffer in the shader file
+5.  Make sure the structured buffer and index buffers match
+
+## 17.1 createShaderResources()
+Increase the size of the buffer
 ```c++
-// 17.0.a
-struct VertexPositionNormalTangentTexture
+// 17.1.a Create an SRV/UAV descriptor heap. Need 4 entries - 1 SRV for the scene and 1 UAV for the output, 1 for the vertex information, and now one for the Index buffer
+mpSrvUavHeap = createDescriptorHeap(mpDevice, 4, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+```
+Create buffer and the view the SRV
+```c++
+// 17.1.b mpVertexBuffer[0] is triangle, mpVertexBuffer[1] is plane, for this excercise we are only doing indices for the triangle
+const int indices[] =
 {
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec3 tangent;
-    glm::vec2 texCoord;
-
-    VertexPositionNormalTangentTexture(const glm::vec3 pos, const glm::vec3 norm,
-        const glm::vec3 tan, const glm::vec2 texCor)
-    {
-        position = pos;
-        normal = norm;
-        tangent = tan;
-        texCoord = texCor;
-    }
-
-    VertexPositionNormalTangentTexture() = default;
+    0, 1, 2
 };
+
+// For simplicity, we create the vertex buffer on the upload heap, but that's not required
+mpIndexBuffer = createBuffer(mpDevice, sizeof(indices), D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, kUploadHeapProps);
+uint8_t* pData;
+mpIndexBuffer->Map(0, nullptr, (void**)&pData);
+memcpy(pData, indices, sizeof(indices));
+mpIndexBuffer->Unmap(0, nullptr);
+
+srvDesc = {};
+srvDesc.ViewDimension = D3D12_SRV_DIMENSION::D3D12_SRV_DIMENSION_BUFFER;
+srvDesc.Format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
+srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+srvDesc.Buffer.StructureByteStride = sizeof(int); // your index struct size goes here
+srvDesc.Buffer.NumElements = 3; // number of indices go here
+srvHandle.ptr += mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+mpDevice->CreateShaderResourceView(mpIndexBuffer, &srvDesc, srvHandle);
+mpIndexBuffer->SetName(L"SRV IB");
 ```
+Add the buffer members to the .h file
 ```c++
-// 17.0.b
-struct Shape
+// 17.1.c
+ID3D12ResourcePtr mpIndexBuffer;
+```
+
+## 17.2 createHitRootDesc()
+Add the SRV to the root signature. We don't have to alter the createRtPipelineState() because the rootsignature is already associated.
+```c++
+// 17.2
+RootSignatureDesc createHitRootDesc()
 {
-    std::vector<VertexPositionNormalTangentTexture> vertexData;
-    std::vector<unsigned short> indexData;
-};
-```
-Add method for creating the sphere
-```c++
-// 17.0.c
-static Shape createSphere(float diameter, int tessellation, bool uvHorizontalFlip = false, bool uvVerticalFlip = false);
-```
-Add code for creating the sphere
-```c++
-// 17.0.d
-Tutorial01::Shape Tutorial01::createSphere(float diameter, int tessellation, bool uvHorizontalFlip, bool uvVerticalFlip)
-{
-    Shape returnSphereInfo;
+    RootSignatureDesc desc;
 
-    const int verticalSegments = tessellation;
-    const int horizontalSegments = tessellation * 2;
-    float uIncrement = 1.f / horizontalSegments;
-    float vIncrement = 1.f / verticalSegments;
-    const float radius = diameter / 2;
+    desc.rootParams.resize(3); // cbv + vertex srv + index srv
+    // CBV
+    desc.rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    desc.rootParams[0].Descriptor.RegisterSpace = 0;
+    desc.rootParams[0].Descriptor.ShaderRegister = 0;
 
-    uIncrement *= uvHorizontalFlip ? 1 : -1;
-    vIncrement *= uvVerticalFlip ? 1 : -1;
+    desc.range.resize(2); // vertex srv + index srv
 
-    float u = uvHorizontalFlip ? 0 : 1;
-    float v = uvVerticalFlip ? 0 : 1;
+    // vertex SRV
+    desc.range[0].BaseShaderRegister = 1; // gOutput used the first t() register in the shader
+    desc.range[0].NumDescriptors = 1;
+    desc.range[0].RegisterSpace = 0;
+    desc.range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    desc.range[0].OffsetInDescriptorsFromTableStart = 0;
+    // vertex SRV
+    desc.rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    desc.rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
+    desc.rootParams[1].DescriptorTable.pDescriptorRanges = &desc.range[0];
 
-    // Start with a single vertex at the bottom of the sphere.
-    for (int i = 0; i < horizontalSegments; i++)
-    {
-        u += uIncrement;
+    // index SRV
+    desc.range[1].BaseShaderRegister = 2; // gOutput used the first t() register in the shader
+    desc.range[1].NumDescriptors = 1;
+    desc.range[1].RegisterSpace = 0;
+    desc.range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    desc.range[1].OffsetInDescriptorsFromTableStart = 0;
+    // index SRV
+    desc.rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    desc.rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
+    desc.rootParams[2].DescriptorTable.pDescriptorRanges = &desc.range[1];
 
-        VertexPositionNormalTangentTexture vertex(
-            glm::vec3(0, -1, 0) * radius,
-            glm::vec3(0, -1, 0),
-            glm::vec3(0),
-            glm::vec2(u, v)
-        );
+    desc.desc.NumParameters = 3; // cbv + vertex srv + index srv
+    desc.desc.pParameters = desc.rootParams.data();
+    desc.desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
 
-        //Add it
-        returnSphereInfo.vertexData.push_back(vertex);
-    }
-
-    // Create rings of vertices at progressively higher latitudes.
-    v = uvVerticalFlip ? 0 : 1;
-    for (int i = 0; i < verticalSegments - 1; i++)
-    {
-        const float latitude = (((i + 1) * static_cast<float>(M_PI)) / verticalSegments) - static_cast<float>(M_PI) / 2;
-        u = uvHorizontalFlip ? 0 : 1;
-        v += vIncrement;
-        const float dy = static_cast<float>(sin(latitude));
-        const float dxz = static_cast<float>(cos(latitude));
-
-        // Create a single ring of vertices at this latitude.
-        for (int j = 0; j <= horizontalSegments; j++)
-        {
-            const float longitude = j * static_cast<float>(M_PI) * 2 / horizontalSegments;
-
-            const float dx = static_cast<float>(cos(longitude)) * dxz;
-            const float dz = static_cast<float>(sin(longitude)) * dxz;
-
-            const glm::vec3 normal(dx, dy, dz);
-
-            const glm::vec2 texCoord(u, v);
-            u += uIncrement;
-
-            VertexPositionNormalTangentTexture vertex(
-                normal * radius,
-                normal,
-                glm::vec3(0),
-                texCoord
-            );
-
-            //Add it
-            returnSphereInfo.vertexData.push_back(vertex);
-        }
-    }
-
-    // Finish with a single vertex at the top of the sphere.
-    v = uvVerticalFlip ? 1 : 0;
-    u = uvHorizontalFlip ? 0 : 1;
-    for (int i = 0; i < horizontalSegments; i++)
-    {
-        u += uIncrement;
-
-        VertexPositionNormalTangentTexture vertex(
-            glm::vec3(0, 1, 0) * radius,
-            glm::vec3(0, 1, 0),
-            glm::vec3(0),
-            glm::vec2(u, v)
-        );
-
-        //Add it
-        returnSphereInfo.vertexData.push_back(vertex);
-    }
-
-    // Create a fan connecting the bottom vertex to the bottom latitude ring.
-    for (int i = 0; i < horizontalSegments; i++)
-    {
-        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i));
-
-        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(1 + i + horizontalSegments));
-
-        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i + horizontalSegments));
-    }
-
-    // Fill the sphere body with triangles joining each pair of latitude rings.
-    for (int i = 0; i < verticalSegments - 2; i++)
-    {
-        for (int j = 0; j < horizontalSegments; j++)
-        {
-            const int nextI = i + 1;
-            const int nextJ = j + 1;
-            const int num = horizontalSegments + 1;
-
-            const int i1 = horizontalSegments + (i * num) + j;
-            const int i2 = horizontalSegments + (i * num) + nextJ;
-            const int i3 = horizontalSegments + (nextI * num) + j;
-            const int i4 = i3 + 1;
-
-            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i1));
-
-            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i2));
-
-            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i3));
-
-            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i2));
-
-            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i4));
-
-            returnSphereInfo.indexData.push_back(static_cast<unsigned short>(i3));
-        }
-    }
-
-    // Create a fan connecting the top vertex to the top latitude ring.
-    for (int i = 0; i < horizontalSegments; i++)
-    {
-        returnSphereInfo.indexData.push_back(static_cast<unsigned short>(returnSphereInfo.vertexData.size() - 1 - i));
-
-        returnSphereInfo.indexData.push_back(
-            static_cast<unsigned short>(returnSphereInfo.vertexData.size() - horizontalSegments - 2 - i));
-
-        returnSphereInfo.indexData.push_back(
-            static_cast<unsigned short>(returnSphereInfo.vertexData.size() - horizontalSegments - 1 - i));
-    }
-
-    calculateTangentSpace(returnSphereInfo);
-
-    return returnSphereInfo;
+    return desc;
 }
 ```
-Add method for calculating tangent space
+
+## 17.3 
+Bind the srv in the Shader Binding Table
 ```c++
-// 17.0.e
-static void calculateTangentSpace(Shape& shape);
+// 17.3.a
+*(uint64_t*)(pEntry3 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 3; //  index SRV comes 3 after the program id
 ```
 ```c++
-// 17.0.f
-void Tutorial01::calculateTangentSpace(Shape& shape)
-{
-    const int vertexCount = shape.vertexData.size();
-    const int triangleCount = shape.indexData.size() / 3;
-
-    glm::vec3* tan1 = new glm::vec3[vertexCount * 2];
-    glm::vec3* tan2 = tan1 + vertexCount;
-
-    VertexPositionNormalTangentTexture a1, a2, a3;
-    glm::vec3 v1, v2, v3;
-    glm::vec2 w1, w2, w3;
-
-    for (int a = 0; a < triangleCount; a++)
-    {
-        const unsigned short i1 = shape.indexData[(a * 3) + 0];
-        const unsigned short i2 = shape.indexData[(a * 3) + 1];
-        const unsigned short i3 = shape.indexData[(a * 3) + 2];
-
-        a1 = shape.vertexData[i1];
-        a2 = shape.vertexData[i2];
-        a3 = shape.vertexData[i3];
-
-        v1 = a1.position;
-        v2 = a2.position;
-        v3 = a3.position;
-
-        w1 = a1.texCoord;
-        w2 = a2.texCoord;
-        w3 = a3.texCoord;
-
-        float x1 = v2.x - v1.x;
-        float x2 = v3.x - v1.x;
-        float y1 = v2.y - v1.y;
-        float y2 = v3.y - v1.y;
-        float z1 = v2.z - v1.z;
-        float z2 = v3.z - v1.z;
-
-        float s1 = w2.x - w1.x;
-        float s2 = w3.x - w1.x;
-        float t1 = w2.y - w1.y;
-        float t2 = w3.y - w1.y;
-
-        const float r = 1.0F / ((s1 * t2) - (s2 * t1));
-        glm::vec3 sdir(((t2 * x1) - (t1 * x2)) * r, ((t2 * y1) - (t1 * y2)) * r, ((t2 * z1) - (t1 * z2)) * r);
-        glm::vec3 tdir(((s1 * x2) - (s2 * x1)) * r, ((s1 * y2) - (s2 * y1)) * r, ((s1 * z2) - (s2 * z1)) * r);
-
-        tan1[i1] += sdir;
-        tan1[i2] += sdir;
-        tan1[i3] += sdir;
-
-        tan2[i1] += tdir;
-        tan2[i2] += tdir;
-        tan2[i3] += tdir;
-    }
-
-    for (int a = 0; a < vertexCount; a++)
-    {
-        VertexPositionNormalTangentTexture vertex = shape.vertexData[a];
-
-        const glm::vec3 n = vertex.normal;
-        const glm::vec3 t = tan1[a];
-
-        // Gram-Schmidt orthogonalize
-        vertex.tangent = t - (n * glm::dot(n, t));
-        vertex.tangent = glm::normalize(vertex.tangent);
-
-        shape.vertexData[a] = vertex;
-    }
-}
+// 17.3.b
+*(uint64_t*)(pEntry7 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 3; // The index SRV comes 3 after the program id
 ```
+
+```c++
+// 17.3.c
+*(uint64_t*)(pEntry9 + D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + sizeof(D3D12_GPU_VIRTUAL_ADDRESS) * 2) = heapStart + mpDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 3; // The index SRV comes 3 after the program id
+```
+
+## 17.4 04-Shaders.hlsl
+Add the code for the structured buffer
+```c++
+// 17.4.a
+StructuredBuffer<uint> indices: register(t2);
+```
+Update the CHS so that we can test that it works
+```c++
+// 17.4.b
+// Retrieve corresponding vertex normals for the triangle vertices.
+float3 vertexNormals[3] = {
+    BTriVertex[instance + indices[0]].normal,
+    BTriVertex[instance + indices[1]].normal,
+    BTriVertex[instance + indices[2]].normal,
+};
+```
+
+![image](https://user-images.githubusercontent.com/17934438/222509414-c22fc5bd-a7cc-48d5-adc1-ec018cdda216.png)
+
