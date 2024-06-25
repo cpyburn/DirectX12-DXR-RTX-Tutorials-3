@@ -1,3 +1,5 @@
+These tutorials were put on hold while I work on another project, sorry.  I will get back to these as soon as I get some free time. 
+
 These tutorials pick up where [DirectX12-DXR-RTX-Tutorials-2](https://github.com/cpyburn/DirectX12-DXR-RTX-Tutorials-2) left off.
 
 These will be more advanced and build on all the things we learned previously.
